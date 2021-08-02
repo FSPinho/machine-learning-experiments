@@ -8,20 +8,20 @@ WORDS_PATH = path.join(DATASETS_PATH, "words")
 WORDS_EMPTY_CODE = -1
 WORDS_UNKNOWN_CODE = -2
 WORDS_PUNCTUATIONS_CODES = {
-    "\n": -3,
-    "...": -4,
-    ".": -5,
-    ",": -6,
-    ":": -7,
-    ";": -8,
-    "-": -9,
-    "(": -10,
-    ")": -11,
-    "?": -12,
-    "!": -13,
-    "@": -14,
-    " ": -15,
+    "\n": -5,
+    "...": -6,
+    ".": -7,
+    ",": -8,
+    ":": -9,
+    ";": -10,
+    "-": -11,
+    "(": -12,
+    ")": -13,
+    "?": -14,
+    "!": -15,
+    "@": -16,
+    " ": -17,
 }
 
 PHRASES_PATH = path.join(DATASETS_PATH, "samples")
-PHRASES_LENGTH = 8
+PHRASES_LENGTH = 12
