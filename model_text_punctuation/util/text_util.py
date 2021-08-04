@@ -2,8 +2,9 @@ import codecs
 import json
 import re
 from os import path
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
+import pandas
 from tqdm import tqdm
 
 import config
@@ -11,8 +12,11 @@ import config
 from util.logging import Log
 
 
-def load_words(lang="pt_br") -> Dict[str, int]:
-    words_dict = {}
+def load_words(lang="pt_br") -> Tuple[Dict[str, int], int]:
+    words_dict = {
+        **config.WORDS_CODES_CODES
+    }
+    start_index = len(words_dict)
 
     with codecs.open(path.join(config.WORDS_PATH, f"{lang}.txt"), encoding="UTF-8") as file:
         words_raw = file.read().split("\n")
@@ -21,13 +25,14 @@ def load_words(lang="pt_br") -> Dict[str, int]:
         words_raw = sorted(words_raw)
 
         for index, word in enumerate(words_raw):
-            words_dict[word] = index
+            words_dict[word] = start_index
+            start_index += 1
 
-    return words_dict
+    return words_dict, start_index
 
 
 def is_punctuation_code(text):
-    return text in list(config.WORDS_PUNCTUATIONS_CODES.keys())
+    return text in list(config.WORDS_CODES_CODES.keys())
 
 
 def print_tokens(cs, msg="", indent=1):
@@ -83,7 +88,7 @@ def load_text_tokens(source="simple", verbose=False) -> List[str]:
     with codecs.open(path.join(config.PHRASES_PATH, f"{source}.txt"), encoding="UTF-8") as file:
         tokens = file.read()
         tokens = re.sub(r"(\s)\s+", r"\1", tokens)
-        p_codes = list(config.WORDS_PUNCTUATIONS_CODES.keys())
+        p_codes = list(config.WORDS_CODES_CODES.keys())
 
         for p_code in p_codes:
             verbose and Log.i("Precessing code:", json.dumps(p_code), indent=2)
@@ -93,12 +98,10 @@ def load_text_tokens(source="simple", verbose=False) -> List[str]:
         return list(filter(lambda t: t != " ", tokens))
 
 
-def tokens_to_dataset(tokens: List[str], words: Dict[str, int], target=".", verbose=False):
+def tokens_to_dataset(tokens: List[str], words: Dict[str, int], target=".", force_equality=False):
     def get_code(item):
         if isinstance(item, int):
             return item
-        elif item in config.WORDS_PUNCTUATIONS_CODES:
-            return config.WORDS_PUNCTUATIONS_CODES[item]
         elif item in words:
             return words[item]
         return config.WORDS_UNKNOWN_CODE
@@ -137,7 +140,26 @@ def tokens_to_dataset(tokens: List[str], words: Dict[str, int], target=".", verb
 
     progress.close()
 
-    dataset = dataset_f[0: int(len(dataset_t) * 1)] + dataset_t
-    dataset_raw = dataset_f_raw[0: int(len(dataset_t_raw) * 1)] + dataset_t_raw
+    if force_equality:
+        dataset = dataset_f[0: int(len(dataset_t) * 1)] + dataset_t
+        dataset_raw = dataset_f_raw[0: int(len(dataset_t_raw) * 1)] + dataset_t_raw
+    else:
+        dataset = dataset_f + dataset_t
+        dataset_raw = dataset_f_raw + dataset_t_raw
 
     return dataset, dataset_raw
+
+
+def load(dataset):
+    words, word_count = load_words()
+    tokens = load_text_tokens(dataset, verbose=True)
+
+    dataset, dataset_raw = tokens_to_dataset(tokens, words, target=".")
+    dataset, dataset_raw = pandas.DataFrame(dataset), pandas.DataFrame(dataset_raw)
+
+    x, y = dataset.iloc[:, :-1], dataset.iloc[:, -1]
+
+    print(dataset)
+    print(dataset_raw)
+
+    return dataset_raw, x, y

@@ -5,23 +5,23 @@ BASE_DIR = path.dirname(__file__)
 DATASETS_PATH = path.join(BASE_DIR, "datasets")
 
 WORDS_PATH = path.join(DATASETS_PATH, "words")
-WORDS_EMPTY_CODE = -1
-WORDS_UNKNOWN_CODE = -2
-WORDS_PUNCTUATIONS_CODES = {
-    "\n": -5,
-    "...": -6,
-    ".": -7,
-    ",": -8,
-    ":": -9,
-    ";": -10,
-    "-": -11,
-    "(": -12,
-    ")": -13,
-    "?": -14,
-    "!": -15,
-    "@": -16,
-    " ": -17,
+WORDS_EMPTY_CODE = 0
+WORDS_UNKNOWN_CODE = -1
+WORDS_CODES_CODES = {
+    " ": 0,
+    "\n": 1,
+    "...": 2,
+    ".": 3,
+    ",": 4,
+    ":": 5,
+    ";": 6,
+    "-": 7,
+    "(": 8,
+    ")": 9,
+    "?": 10,
+    "!": 11,
+    "@": 12,
 }
 
 PHRASES_PATH = path.join(DATASETS_PATH, "samples")
-PHRASES_LENGTH = 12
+PHRASES_LENGTH = 32

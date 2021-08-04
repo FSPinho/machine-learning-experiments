@@ -1,1 +1,4 @@
-datasets/samples
+*/datasets/samples
+*/env/
+*.pyc
+model.h5
