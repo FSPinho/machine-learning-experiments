@@ -2,3 +2,4 @@
 */env/
 *.pyc
 model.h5
+tmp.txt

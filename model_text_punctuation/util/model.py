@@ -35,6 +35,4 @@ def define_model(length, vocab_size):
     model = Model(inputs=[inputs1, inputs2, inputs3], outputs=outputs)
     # compile
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-    # summarize
-    print(model.summary())
     return model

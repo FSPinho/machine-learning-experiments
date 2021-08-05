@@ -1,5 +1,4 @@
 import codecs
-import json
 import re
 from os import path
 from typing import List, Dict, Tuple
@@ -12,9 +11,12 @@ import config
 from util.logging import Log
 
 
-def load_words(lang="pt_br") -> Tuple[Dict[str, int], int]:
+def load_words(lang=None) -> Tuple[Dict[str, int], int]:
+    if not lang:
+        lang = "pt_br"
+
     words_dict = {
-        **config.WORDS_CODES_CODES
+        **config.WORDS_CODES
     }
     start_index = len(words_dict)
 
@@ -32,27 +34,24 @@ def load_words(lang="pt_br") -> Tuple[Dict[str, int], int]:
 
 
 def is_punctuation_code(text):
-    return text in list(config.WORDS_CODES_CODES.keys())
+    return text in list(config.WORDS_CODES.keys())
+
+
+def pad(txt, length=10):
+    txt = "".join(str(txt)[0:length]).replace("\n", r"\n")
+    return str(txt) + "".join([" "] * max(0, length - len(str(txt))))
 
 
 def print_tokens(cs, msg="", indent=1):
-    def pad(txt, length=10):
-        txt = "".join(str(txt)[0:length]).replace("\n", r"\n")
-        return str(txt) + "".join([" "] * max(0, length - len(str(txt))))
-
     Log.i(msg + " | ".join(map(pad, cs)), indent=indent)
 
 
-def split_tokens_from_code(code, tokens, verbose=False):
+def split_tokens_from_code(code, tokens):
     if not isinstance(tokens, (list, tuple)):
         tokens = [tokens]
 
     tokens_tmp = []
-
-    if verbose:
-        progress = tqdm(total=len(tokens), ncols=84, desc=(" " * 15) + "Processing")
-    else:
-        progress = None
+    progress = tqdm(total=len(tokens), ncols=128, desc=f"Processing {pad(code, 6)}\t")
 
     for chunk_index, chunk in enumerate(tokens):
         progress and progress.update(1)
@@ -84,18 +83,26 @@ def split_tokens_from_code(code, tokens, verbose=False):
     return tokens_tmp
 
 
-def load_text_tokens(source="simple", verbose=False) -> List[str]:
-    with codecs.open(path.join(config.PHRASES_PATH, f"{source}.txt"), encoding="UTF-8") as file:
-        tokens = file.read()
-        tokens = re.sub(r"(\s)\s+", r"\1", tokens)
-        p_codes = list(config.WORDS_CODES_CODES.keys())
+def load_text_tokens(dataset=None, text=None, words=None) -> List[str]:
+    if dataset:
+        with codecs.open(path.join(config.PHRASES_PATH, f"{dataset}.txt"), encoding="UTF-8") as file:
+            tokens = file.read()
+    else:
+        tokens = text or ""
 
-        for p_code in p_codes:
-            verbose and Log.i("Precessing code:", json.dumps(p_code), indent=2)
-            tokens = split_tokens_from_code(p_code, tokens, verbose=verbose)
-            verbose and Log.i(f"{len(tokens)} tokens found.", indent=3)
+    if not words:
+        words = load_words()
 
-        return list(filter(lambda t: t != " ", tokens))
+    tokens = tokens[:100]
+    tokens = "".join(filter(lambda t: t in words, list(tokens)))
+    tokens = re.sub(r"(\s)\s+", r"\1", tokens)
+
+    p_codes = list(config.WORDS_CODES.keys())
+
+    for p_code in p_codes:
+        tokens = split_tokens_from_code(p_code, tokens)
+
+    return list(filter(lambda t: t != " ", tokens))
 
 
 def tokens_to_dataset(tokens: List[str], words: Dict[str, int], target=".", force_equality=False):
@@ -106,60 +113,15 @@ def tokens_to_dataset(tokens: List[str], words: Dict[str, int], target=".", forc
             return words[item]
         return config.WORDS_UNKNOWN_CODE
 
-    dataset_t = []
-    dataset_f = []
-    dataset_t_raw = []
-    dataset_f_raw = []
-
-    progress = tqdm(total=len(tokens), ncols=84, desc=(" " * 15) + "Processing")
-
-    for word_index, word in enumerate(tokens):
-        progress.update(1)
-
-        row = []
-        has_target = False
-        for i in range(word_index, word_index - config.PHRASES_LENGTH, -1):
-            t = tokens[i] if i >= 0 else config.WORDS_EMPTY_CODE
-            if t == target:
-                has_target = True
-            row.insert(0, config.WORDS_EMPTY_CODE if has_target else t)
-
-        # row = sorted(row, key=lambda x: str(x))
-        row_raw = row
-        row = [get_code(t) for t in row]
-
-        if config.WORDS_UNKNOWN_CODE not in row:
-            if word_index < len(tokens) - 1 and tokens[word_index + 1] == target:
-                row.append(1)
-                dataset_t.append(row)
-                dataset_t_raw.append(row_raw)
-            else:
-                row.append(0)
-                dataset_f.append(row)
-                dataset_f_raw.append(row_raw)
-
-    progress.close()
-
-    if force_equality:
-        dataset = dataset_f[0: int(len(dataset_t) * 1)] + dataset_t
-        dataset_raw = dataset_f_raw[0: int(len(dataset_t_raw) * 1)] + dataset_t_raw
-    else:
-        dataset = dataset_f + dataset_t
-        dataset_raw = dataset_f_raw + dataset_t_raw
-
-    return dataset, dataset_raw
+    return [[]], []
 
 
-def load(dataset):
-    words, word_count = load_words()
-    tokens = load_text_tokens(dataset, verbose=True)
-
+def load(dataset=None, text=None, lang=None):
+    words, word_count = load_words(lang)
+    tokens = load_text_tokens(dataset=dataset, text=text, words=words)
     dataset, dataset_raw = tokens_to_dataset(tokens, words, target=".")
     dataset, dataset_raw = pandas.DataFrame(dataset), pandas.DataFrame(dataset_raw)
 
     x, y = dataset.iloc[:, :-1], dataset.iloc[:, -1]
 
-    print(dataset)
-    print(dataset_raw)
-
-    return dataset_raw, x, y
+    return dataset, dataset_raw, x, y
